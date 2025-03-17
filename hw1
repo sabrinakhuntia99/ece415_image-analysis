@@ -8,10 +8,10 @@ x = np.ones((3,3))
 print(x)
 
 # SPATIAL IMPULSE RESPONSE h(n1,n2)
-# Create a 3x3 matrix filled with zeros
+# 3x3 matrix filled with zeros
 h = np.zeros((3, 3))
 
-# Fill the top-right 2x2 block with 1/4
+# top-right 2x2 block with 1/4
 h[:2, 1:] = 1/4.0
 
 print(h)
