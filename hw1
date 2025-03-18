@@ -16,10 +16,10 @@ h[:2, 1:] = 1/4.0
 
 print(h)
 
-# convolution
+# CONVOLUTION
 y = convolve2d(x,h,mode='full')
 
-# correlation
+# CORRELATION
 w = correlate2d(x,h,mode='full')
 
 print("Convolution result (y):\n",y)
