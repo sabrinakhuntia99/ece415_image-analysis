@@ -1,0 +1,70 @@
+import numpy as np
+from scipy import ndimage, signal
+from PIL import Image
+import matplotlib.pyplot as plt
+
+image = np.array(Image.open('noise.jpeg').convert('L'))  # Convert to grayscale
+
+# even dimensions
+def make_even(img):
+    if img.shape[0] % 2 != 0:
+        img = np.pad(img, ((0, 1), (0, 0)), mode='reflect')
+    if img.shape[1] % 2 != 0:
+        img = np.pad(img, ((0, 0), (0, 1)), mode='reflect')
+    return img
+
+image = make_even(image)
+
+# Q1a (MEDIAN FILTER)
+median_filtered = ndimage.median_filter(image, size=3)
+Image.fromarray(median_filtered).save('median_output.jpeg')
+
+# Q2a (SOBEL HORIZONTAL)
+sobel_y = signal.convolve2d(image, np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]]), mode='same')
+Image.fromarray(np.uint8(np.abs(sobel_y))).save('sobel_horizontal.jpeg')
+
+# Q2b (SOBEL VERT.)
+sobel_x = signal.convolve2d(image, np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]]), mode='same')
+Image.fromarray(np.uint8(np.abs(sobel_x))).save('sobel_vertical.jpeg')
+
+# Q3 (WAVELET TRANSFORM)
+def dwt2(img):
+    return (img[::2, ::2] + img[1::2, ::2] + img[::2, 1::2] + img[1::2, 1::2]) / 4
+
+ll = dwt2(image)
+hl = dwt2(image - np.roll(image, 1, axis=0))
+lh = dwt2(image - np.roll(image, 1, axis=1))
+hh = dwt2(image - np.roll(image, 1, axis=0) - np.roll(image, 1, axis=1))
+
+# threshold
+Th = 10
+hl[np.abs(hl) <= Th] = 0
+lh[np.abs(lh) <= Th] = 0
+hh[np.abs(hh) <= Th] = 0
+
+# INVERSE WAVELET TRANSFORM
+def idwt2(ll, hl, lh, hh):
+    out = np.zeros((2*ll.shape[0], 2*ll.shape[1]))
+    out[::2, ::2] = ll + hl + lh + hh
+    out[1::2, ::2] = ll - hl + lh - hh
+    out[::2, 1::2] = ll + hl - lh - hh
+    out[1::2, 1::2] = ll - hl - lh + hh
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+denoised_image = idwt2(ll, hl, lh, hh)
+Image.fromarray(denoised_image).save('wavelet_denoised.jpeg')
+
+# Q4a (HISTO)
+plt.hist(image.ravel(), bins=256, range=(0, 256))
+plt.savefig('histogram_original.png')
+plt.close()
+
+# Q4b/c (HISTO EQUALIZATION)
+def hist_eq(img):
+    hist, _ = np.histogram(img.flatten(), 256, [0, 256])
+    cdf = hist.cumsum()
+    cdf = (cdf - cdf.min()) * 255 / (cdf.max() - cdf.min())
+    return np.interp(img.flatten(), np.arange(256), cdf).reshape(img.shape)
+
+Image.fromarray(hist_eq(image).astype(np.uint8)).save('equalized_noise.jpeg')
+Image.fromarray(hist_eq(median_filtered).astype(np.uint8)).save('equalized_median.jpeg')
